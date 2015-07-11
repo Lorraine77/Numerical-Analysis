@@ -1,0 +1,167 @@
+Prob #3
+
+# function for f(beta,x)
+f = function(beta,x)
+{ 
+f<- beta[1]*exp(-beta[2]*x)+beta[3]*exp(-(x-beta[4])^2/beta[5]^2)+beta[6]*exp(-(x-beta[7])^2/beta[8]^2)
+ return(f)
+}
+
+
+# function for E(beta)
+E =function (beta,x,y)
+{
+  residual <- (y-f(beta,x))%*%(y-f(beta,x))
+  residual<- as.numeric(residual)
+  return(residual)
+  
+}
+
+# gradient function for f
+grad_f =function(beta,x)
+{ grad<- matrix(0,length(x),8)
+  grad[,1] <- exp(-beta[2]*x)
+  grad[,2] <- beta[1]*(-x)*exp(-beta[2]*x)
+  grad[,3] <- exp(-(x-beta[4])^2/(beta[5]^2))
+  grad[,4] <- beta[3]*(-2)*(x-beta[4])/(beta[5]^2)*exp(-(x-beta[4])^2/(beta[5]^2))
+  grad[,5] <- beta[3]*2*(x-beta[4])^2/(beta[5]^3)*exp(-(x-beta[4])^2/(beta[5]^2))
+  grad[,6] <- exp(-(x-beta[7])^2/(beta[8]^2))
+  grad[,7] <- beta[6]*(-2)*(x-beta[7])/(beta[8]^2)*exp(-(x-beta[7])^2/(beta[8]^2))
+  grad[,8] <- beta[6]*2*(x-beta[7])^2/(beta[8]^3)*exp(-(x-beta[7])^2/(beta[8]^2))
+  return(grad)
+}
+
+# gradient function for E
+grad_E = function(beta,x,y)
+{
+c <- f(beta,x)-y
+C <- matrix(c,length(x),8)
+D <- C*grad_f(beta,x)
+grad<- t(D)%*%rep(1,length(x))
+grad <- as.vector(t(grad))
+return(grad)
+}
+
+# function to find the module of gradient of E
+norm = function(g)
+{ 
+  norm<- sqrt(g%*%g)
+  return(norm)
+}
+
+# one of the conditions that the steepest descent will finally converge is that after 
+# certain times of iteration, the distance between the kth error function and (k+1)th # error function is very small. I used this as one of the termination criterion. Another # criterion I used is the number of iteration in the input, tol is the termination 
+# criterion for distance between (k+1)th and the kth iteration maxbt is the maximum # iterations
+
+# Steepest Descent Method
+sd =function(beta,tol,maxbt)
+{ 
+  itc<- 0
+  # dis is the distance of the function value between the (k+1)th and the kth iteration 
+  dis <- 1
+  while(dis >tol & itc< maxbt)
+  {
+   d <- -grad_E(beta,x,y)/norm(grad_E(beta,x,y))
+   alpha <-1
+   while (E(beta,x,y)<=E(beta+alpha*d,x,y))
+   {alpha <- alpha/2
+   }
+  
+   # print(alpha)
+   itc <- itc+1
+   # print(itc)
+   dis <- abs(E(beta+alpha*d,x,y)-E(beta,x,y))
+   print(dis)
+   beta<- beta+alpha*d
+  }
+  return(beta)
+}
+
+
+
+x<- non_linear_1$x
+y<- non_linear_1$y
+beta <- c(96,0.009,103,106,18,72,151,18) 
+tol <- 1e-3
+maxbt <- 10^6
+Rprof('my_profiling_file_out')
+sd(beta,tol,maxbt)
+Rprof(NULL)
+summaryRprof('my_profiling_file.out')$by.total
+> summaryRprof('my_profiling_file.out')$by.total
+                        total.time total.pct self.time self.pct
+"sd"                      12008.56    100.00    109.88     0.92
+"E"                        9830.76     81.86    405.84     3.38
+"f"                        9236.66     76.92   1720.84    14.33
+"exp"                      5935.58     49.43   5935.58    49.43
+"grad_E"                   1561.56     13.00     56.36     0.47
+"grad_f"                    978.76      8.15    369.02     3.07
+"norm"                      782.02      6.51      8.30     0.07
+"-"                         709.00      5.90    709.00     5.90
+"*"                         613.26      5.11    613.26     5.11
+"print"                     459.84      3.83     93.84     0.78
+"/"                         394.02      3.28    394.02     3.28
+"print.default"             366.00      3.05    366.00     3.05
+"^"                         319.54      2.66    319.54     2.66
+"%*%"                       269.58      2.24    269.58     2.24
+"+"                         248.24      2.07    248.24     2.07
+"matrix"                    180.26      1.50    177.18     1.48
+"t"                         117.64      0.98     88.86     0.74
+"as.vector"                  45.54      0.38      9.14     0.08
+"as.numeric"                 33.42      0.28     33.42     0.28
+"("                          29.92      0.25     29.92     0.25
+"t.default"                  28.78      0.24     28.78     0.24
+"<="                         12.18      0.10     12.18     0.10
+"&"                           2.06      0.02      2.06     0.02
+"length"                      2.00      0.02      2.00     0.02
+"is.atomic"                   1.70      0.01      1.70     0.01
+"sqrt"                        1.66      0.01      1.66     0.01
+">"                           0.80      0.01      0.80     0.01
+"abs"                         0.78      0.01      0.78     0.01
+"<Anonymous>"                 0.46      0.00      0.02     0.00
+"<"                           0.32      0.00      0.32     0.00
+"package_version"             0.32      0.00      0.02     0.00
+"getRversion"                 0.32      0.00      0.00     0.00
+".make_numeric_version"       0.24      0.00      0.02     0.00
+"R_system_version"            0.24      0.00      0.00     0.00
+"paste"                       0.12      0.00      0.02     0.00
+"sort"                        0.12      0.00      0.00     0.00
+"structure"                   0.10      0.00      0.04     0.00
+"%in%"                        0.10      0.00      0.02     0.00
+"["                           0.10      0.00      0.00     0.00
+"[.simple.list"               0.10      0.00      0.00     0.00
+"match"                       0.08      0.00      0.04     0.00
+"basename"                    0.06      0.00      0.06     0.00
+"grep"                        0.06      0.00      0.06     0.00
+"grepl"                       0.06      0.00      0.06     0.00
+".External"                   0.04      0.00      0.04     0.00
+"names"                       0.04      0.00      0.04     0.00
+"Rprof"                       0.04      0.00      0.00     0.00
+"NextMethod"                  0.02      0.00      0.02     0.00
+"sprintf"                     0.02      0.00      0.02     0.00
+"strsplit"                    0.02      0.00      0.02     0.00
+"lapply"                      0.02      0.00      0.00     0.00
+"searchpaths"                 0.02      0.00      0.00     0.00
+
+# after 10^6 iterations, the distance between error function is 0.001365891, which is  
+# close to 0.01, so I think adding more iterations, say between 10^6 and 10^7, beta  # will converge to a more accurate value.
+
+# the answer I get is 
+
+[1] 9.600198e+01 9.149967e-03 1.030251e+02 1.055083e+02 1.891080e+01 7.202642e+01
+[7] 1.511674e+02 1.850192e+01
+
+# therefore, the optimal value of beta is:
+
+betafinal<- c(9.600198e+01,9.149967e-03,1.030251e+02,1.055083e+02,1.891080e+01,7.202642e+01,1.511674e+02,1.850192e+01)
+
+
+# to plot (x,y) graph of the datapoints, the fit by beta and the fit by betafinal
+
+F1<- f(beta,x)
+F2<- f(betafinal,x)
+plot(x,y,col='green',xlal='x',ylan='y')
+lines(F1,col='red',type='l',lwd=2)
+lines(F2,col='blue',type='l',lwd = 2)
+legend(x='topright',c('data','beta','betafinal'),col=c('green','red','blue'),lty=c(NA,1,1),pch=c(1,NA,NA))
+

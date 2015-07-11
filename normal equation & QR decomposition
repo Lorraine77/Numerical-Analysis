@@ -1,0 +1,256 @@
+
+Problem #2
+# input data
+economic_data<- read.table('C:/Users/Administrator/Desktop/economic_data.txt',header=T)
+
+#a
+A <- economic_data[,2:7]
+# to form the design matrix with the first column all 1s
+A <- as.matrix(cbind(rep(1,16),A))
+y <- economic_data[,8]
+k_A <- kappa(A)
+# the answer is 5617818514
+k_ATA <- kappa(t(A)%*%A) 
+# the answer is 2.272203e+19
+# to solve the normal equation and find the coefficient vector B1
+B1 <- solve(t(A)%*%A,t(A)%*%y)
+# R refuses to do it
+# it shows that Error in solve.default(t(A) %*% A, t(A) %*% y) : 
+  system is computationally singular: reciprocal condition number = 3.50595e-20
+# therefore we change the tol flag in solve command, and try it again
+
+B1 <- solve(t(A)%*%A,t(A)%*%y,tol=10^-20) 
+# the answer is 
+ 	row.names	V1
+1	 	-3.475441e+06
+2	A1	1.478949e+01
+3	A2	-3.574762e-02
+4	A3	-2.020195e+00
+5	A4	-1.032766e+00
+6	A5	-4.911940e-02
+7	A6	1.825544e+03
+
+
+#b
+# use qr command to compute the QR Decomposition for A
+QRA <- qr(A)
+Q<- qr.Q(QRA)
+R <- qr.R(QRA)
+k_Q <- kappa(Q)
+# the answer is 1
+k_R <- kappa(R)
+# the answer is 5617818514
+# to find the coefficient vector B2
+B2 <- solve(R,t(Q)%*%y)
+# The answer is 
+ 	row.names	V1
+1	 	-3.475441e+06
+2	A1	1.478948e+01
+3	A2	-3.574762e-02
+4	A3	-2.020195e+00
+5	A4	-1.032766e+00
+6	A5	-4.911940e-02
+7	A6	1.825544e+03
+# as we can see, the answer is the same the one in part a
+
+#c
+lm (y~ A)
+# the answer is 
+Call:
+lm(formula = y ~ A[, 2:7])
+
+
+#d
+# to find the difference between B1 and B2
+e <- B1-B2
+
+
+
+# to compare the condition number of A,ATA,R,Q
+# the answer is 
+[1] 5.617819e+09 2.272203e+19 1.000000e+00 5.617819e+09
+# as we can see ,the condition number of ATA is much larger than the condition number of R. 
+# therefore, from the perspective of reducing computing error in R, QR factorization is a better
+# method
+
+#e
+No, if the condition number is large than 1e+16, we are not able to solve Ax=b using 64-bit flating point arithmetic. Let x’ be the floating point computed version of x, then norm(x-x’)/norm(x) should be less then k(A)*10^-16.
+
+Problem #3
+
+# a
+mydata <- read.table('C:/Users/Administrator/Desktop/non_linear_1.txt',header=T)
+x <- mydata$x
+y <- mydata$y
+plot(x,y,type='o')
+
+ 
+
+
+
+
+
+
+
+
+
+
+#b
+# fucntion for f(x;beta)
+f = function(t,beta)
+{
+ sec1 <-  beta[1]*exp(-beta[2]*t)
+ sec2 <- beta[3]*exp(-(t-beta[4])^2/beta[5]^2)
+ sec3 <- beta[6]*exp(-(t-beta[7])^2/beta[8]^2) 
+ mylist<- list(sum=sec1+sec2+sec3,sec1=sec1,sec2=sec2,sec3=sec3)
+return(mylist)  
+}
+
+# gradient for f
+gf =function (t,beta)
+{
+  f <- f(t,beta)
+  dbeta1 <- f$sec1/beta[1]
+  dbeta2 <- -t*f$sec1
+  dbeta3 <- f$sec2/beta[3]
+  dbeta4 <- 2*(t-beta[4])/(beta[5]^2)*f$sec2
+  dbeta5 <- dbeta4*(t-beta[4])/beta[5]
+  dbeta6 <- f$sec3/beta[6]
+  dbeta7 <- 2*(t-beta[7])/(beta[8]^2)*f$sec3
+  dbeta8 <- dbeta7*(t-beta[7])/beta[8]
+  c <- c(dbeta1,dbeta2,dbeta3,dbeta4,dbeta5,dbeta6,dbeta7,dbeta8)
+  return(c)
+}
+
+# Hessian matrix for f(x;beta)
+hf <- function(t,beta)
+{
+  f <- f(t,beta)
+  gf <- gf(t,beta)
+  hf <- matrix(0,8,8)
+  hf[1,2] <- -t*gf[1] 
+
+  hf[2,2] <- t^2*f$sec1
+  
+  hf[3,4] <- 2*(t-beta[4])/(beta[5]^2)*gf[3]
+  hf[3,5] <- 2*(t-beta[4])^2/(beta[5]^3)*gf[3]
+
+  hf[4,4] <- -2/(beta[5]^2)*f$sec2+2*(t-beta[4])/(beta[5]^2)*gf[4]
+  hf[4,5] <- -2*gf[4]/(beta[5])+2*(t-beta[4])^2/(beta[5]^3)*gf[4]
+  
+
+  hf[5,5] <- -3*gf[5]/(beta[5])+gf[5]*2*(t-beta[4])^2/(beta[5]^3)
+  
+  hf[6,7] <- 2*(t-beta[7])/(beta[8]^2)*gf[6]
+  hf[6,8] <- 2*(t-beta[7])^2/beta[8]^3*gf[6]
+  
+
+  hf[7,7] <- -2/(beta[8]^2)*f$sec3+2*(t-beta[7])/(beta[8]^2)*gf[7]
+  hf[7,8] <- -2*gf[7]/(beta[8])+2*(t-beta[7])^2/beta[8]^3*gf[7]
+  
+  hf[8,8] <- -3*gf[8]/(beta[8])+2*(t-beta[7])^2/(beta[8]^3)*gf[8]
+  
+  hf <- hf+t(hf)-diag(diag(hf),8,8)
+  return(hf)
+}
+
+# function for E(beta)
+e =function(x,y,beta){
+  c<- rep(0,length(x))
+  for (j in 1:length(x))
+  {c[j] <-  (y[j]-f(x[j],beta)$sum)^2
+  }
+  return(sum(c))
+}
+
+# gradient function for squared residuals E(beta)
+grad =function(x,y,beta)
+{
+  c <- c()
+  d <- c()
+  
+  for (i in 1:8){
+    sum1 <- 0
+    for (j in 1:length(x)){
+ 
+c[j] <-  -2*(y[j]-f(x[j],beta)$sum)*gf(x[j],beta)[i]
+sum1 <- sum1 +c[j]
+ 
+}
+ d[i] <- sum1
+    
+ }
+  norm <- sqrt(sum(d^2))
+  return(list(grade=d,norme=norm))
+}
+  
+#hessian function for squared residuals E(beta)
+hess = function(x,y,beta)
+{
+  h <- matrix(0,8,8)
+  for (i in 1:8){
+    for (j in 1:i){
+      for (k in 1:length(x)){
+        f <- f(x[k],beta)$sum
+        g <- gf(x[k],beta)
+        hf <- hf(x[k],beta)
+        h[i,j] <- h[i,j]+2*f*g[i]*g[j]-2*(y[k]-f)*hf[i,j]
+        h[j,i]<- h[i,j]
+        
+      } 
+    }
+  }
+  return(h)
+}
+
+
+#c
+# newton method with backtracking
+newtonback=function(x,y,beta,eps){
+  g=grad(x,y,beta)$grade
+  h=hess(x,y,beta)
+  i=0
+  while(abs(grad(x,y,beta)$norme)>=eps & i<=10000){    # i here is a stopper
+    d=-solve(h,g,tol=10^-20)   # tol is here to improve the tolerance level
+    if(d%*%g<0){
+      alpha=1
+      while(e(x,y,beta+alpha*d)>=e(x,y,beta)){
+        alpha=alpha/2
+      }
+      beta=beta+alpha*d
+      i=i+1
+      print(i)
+    }
+    else{
+      d=-g/grad(x,y,beta)$norme
+      alpha=1
+      while(e(x,y,beta+alpha*d)>=e(x,y,beta)){
+        alpha=alpha/2
+      }
+      beta=beta+alpha*d
+      i=i+1
+      print(i)
+    }
+  }
+  return(beta)
+}
+
+#d
+
+> beta <- c(1,2,3,4,5,6,7,8)
+> newtonback(x,y,beta,0.001)
+Error in solve.default(h, g) : 
+  system is computationally singular: reciprocal condition number = 1.00091e-17
+beta <- c(0.1,0.2,0.2,0.2,0.44,0.4,0.44,0.4)
+> newtonback(x,y,beta,0.001)
+Error in solve.default(h, g) : 
+  system is computationally singular: reciprocal condition number = 1.10602e-17
+> beta <- c(0.01,0.02,0.02,0.02,0.44,0.4,0.44,0.4)
+> newtonback(x,y,beta,0.001)
+Error in solve.default(h, g) : 
+  system is computationally singular: reciprocal condition number = 1.37936e-19
+newtonback(x,y,beta,0.01)
+Error in solve.default(h, g, tol = 10^-20) : 
+  Lapack routine dgesv: system is exactly singular: U[5,5] = 0
+
+# at first I did not set up the tol and I tired many initial values for beta, most of them give back errors in solving solve(h,g). so I set the tol=10^20 and tired again. This time, I tried less initial values and the iteration begins. However, a new problem appears, the iteration would never stop….I went on wiki to see the discussion of others, it seems that others are meeting the same problem. I have thought about it for a long time and still did not figure out the reason. So I just set a stopper I= 10000 to control the iteration. However, it still takes so long to go over the iteration.

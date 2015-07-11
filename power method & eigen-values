@@ -1,0 +1,213 @@
+2.
+e)
+# function to compute norm
+norm <- function(x)
+{
+  norm <- sqrt(sum(x^2))
+  return(norm)
+}
+
+# function for power method
+powermethod <- function(M,w,n)
+{
+  for (j in 1:n)
+  {
+    w <- M%*%w
+    w <- w/norm(w)
+    
+  }
+  return(w)
+}
+
+# a better code
+# this power method gives both the largest eigen value and its corresponding
+# eigen vector
+powermethod <- function(M,w,n)
+{
+  w<- w/norm(w)
+  for (j in 1:n)
+  { 
+    y <- M%*%w
+    lam<- t(y)%*%w
+    w<- y/norm(y)
+  }
+  return(list(w,lam))
+}
+
+
+
+
+# function to find the largest eigen vector
+maxeigen <- function(x)
+{
+  evalues<- eigen(x)$values
+  evectors <- eigen(x)$vectors
+  maxevalue<- max(abs(evalues))
+  maxevector<- evectors[,abs(evalues)==maxevalue]
+  return(maxevector)
+}
+
+# function to compute the iteration time n
+iteratimes <- function(x)
+{
+  d <- dim(x)[1]
+  error <- rep(1,d)
+  n <-1
+  w <- rnorm(d)
+  while (prod(abs(error)<0.01)==0)
+  {
+    v <- as.vector(unlist(powermethod(x,w,n)[1]))
+    error <- abs(v/maxeigen(x))-1
+    n <- n+1  
+  }
+  return(n-1)
+}
+
+RUN:
+To test on an arbitrary matrix
+M <- matrix(c(1,2,3,4,5,2,9,5,3),3)
+iteratimes(M)
+
+answer:
+M <- matrix(c(1,2,3,4,5,2,9,5,3),3)
+> 
+> M
+     [,1] [,2] [,3]
+[1,]    1    4    9
+[2,]    2    5    5
+[3,]    3    2    3
+> iteratimes(M)
+[1] 6
+
+
+
+
+
+
+
+3.(b)
+(i)
+
+# for karate
+# to import data ‘ karate’
+
+karate <- read.table('C:/Users/Administrator/Desktop/karate club.txt')
+
+# function to compute B, where B_ij=A_ij-kikj/2m. the input matrix A is the adjacency matrix
+
+def <- function(x){
+d <- dim(x)[1]
+k <- c()
+for (i in 1 :d)
+{
+  k[i]<- sum(x[i,])
+  
+}
+m <- sum(k)/2
+B <- matrix(rep(1),d,d)
+for (i in 1:d)
+{
+  for (j in 1:d)
+  {
+    B[i,j] <- x[i,j]-(k[i]*k[j])/(m*2)
+  }
+}
+return(B)
+}
+
+RUN:
+K<- def(karate)
+n <- iteratimes(K)
+w <- rnorm(34)
+evalue <- powermethod(K,w,n)[2]
+evector<- powermethod(K,w,n)[1]
+
+
+# for les miserables
+# to import data ‘les miserables’
+
+lesmis <- read.table('C:/Users/Administrator/Desktop/les_miserables.txt')
+
+#turn it into a matrix
+lesmis1 <- as.matrix(lesmis)
+
+# first to make lesmis1 symmetric
+# in Newman's paper, he says that the entries of the adjacency matrix A are normally 
+# 0 and 1, but sometimes they can be more than 1
+# so as I make the lesmis1 a symmetric matrix, I kept the entries which are more than 1
+
+
+for (i in 1:77){
+  for (j in 1:77)
+  {
+    if (lesmis1[i,j]!=lesmis1[j,i])
+    lesmis1[i,j]<- max(c(lesmis1[i,j],lesmis1[j,i]))
+    
+  }
+}
+
+
+RUN:
+L<- def(lesmis1)
+n <- iteratimes(L)
+w <- rnorm(77)
+evalue <- powermethod(L,w,n)[2]
+evector<- powermethod(L,w,n)[1]
+
+
+# the magnitude of the largest evalue is fairly large in this case
+
+# in normal conditions, the entries of adjacency matrix are 0 and 1, this time I make all the 
+# entries larger than 1 to 1
+
+for (i in 1:77){
+  for (j in 1:77)
+  {
+    if (lesmis1[i,j]>1)
+      lesmis1[i,j]<-1
+    
+  }
+}
+
+RUN:
+L<- def(lesmis1)
+n <- iteratimes(L)
+w <- rnorm(77)
+evalue <- powermethod(L,w,n)[2]
+evector<- powermethod(L,w,n)[1]
+
+
+
+
+
+
+
+
+(ii)
+
+# first extract the matrix which consists of the 3 eigen vectors corresponding to the first 3 largest # eigen values of B
+
+newmatrix <- function(A)
+{
+evsort <- sort(abs(eigen(A)$value),decreasing=TRUE)
+ev1<- eigen(A)$vectors[,abs(eigen(A)$values)==evsort[1]]
+ev2<- eigen(A)$vectors[,abs(eigen(A)$values)==evsort[2]]
+ev3<- eigen(A)$vectors[,abs(eigen(A)$values)==evsort[3]]
+newmatrix <- matrix(c(ev1,ev2,ev3),ncol=3)
+return (newmatrix)
+}
+library("igraph", lib.loc="D:/R-3.0.2/library")
+
+
+mycolor1=matrix(1,34,3)
+mycolor1[newmatrix(K)>0]<-"brown1"
+mycolor1[newmatrix(K)<0]<-"chartreuse2"
+myplot1=graph.adjacency(karate,mode="undirected",weighted=NULL,diag=FALSE) 
+plot.igraph(myplot1,vertex.color=mycolor1[,3])
+
+ 
+mycolor2=matrix(1,77,3)
+mycolor2[newmatrix(L)>0]<-"brown1"
+mycolor2[newmatrix(L)<0]<-"chartreuse2"
+myplot2=graph.adjacency(lesmis1,mode="undirected",weighted=NULL,diag=FALSE) 
+plot.igraph(myplot2,vertex.color=mycolor2[,3])

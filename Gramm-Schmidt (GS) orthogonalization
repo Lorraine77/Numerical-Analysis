@@ -1,0 +1,162 @@
+# problem2
+# GS iteration
+gs=function(A)
+{
+Q <- matrix(0,nrow=nrow(A),ncol=ncol(A))
+n <- dim(A)[2]
+Q[,1]<- A[,1]/sqrt(sum(A[,1]^2))
+for (j in 2:n)
+{
+sum <- 0
+for ( i in 1:(j-1))
+ {
+  sum=sum+(A[,j]%*%Q[,i])*Q[,i]
+ }
+
+Q[,j] <- A[,j]-sum
+Q[,j] <- Q[,j]/sqrt(sum(Q[,j]^2))
+}
+return(Q)
+}
+# problem 3
+pima <- as.matrix(pima)
+x <- pima[,1:8]
+y <- pima[,9]
+# first filter the data points which are missclassified
+
+filter =function(beta)
+{ f<- c()
+  for (j in 1:768)
+  { 
+    f[j] <- y[j]*(beta[9]+sum(beta[1:8]*x[j,]))
+  }
+  yerror<- y[f<0]
+  xerror <- x[f<0,]
+  ferror <- f[f<0]
+  return(list(xerror=xerror,yerror=yerror,ferror=ferror))
+}
+
+
+
+# the function for error
+errf<- function(beta)
+{
+  f <- -sum(filter(beta)$ferror)
+  return(f)
+}
+
+#part a
+# gradient function for error function
+grad=function(beta)
+{ g <- c()
+  
+  for (j in 1:8)
+  { xerror <- filter(beta)$xerror
+    yerror <- filter(beta)$yerror
+    g[j]<- -sum(yerror*xerror[,j])
+  }
+  g[9]<- -sum(yerror)
+  return(g)
+  
+}
+
+
+# Show that when a datapoint lands on the hyperplane de-
+# termined by, the derivative does not exist in the same
+# way that the derivative of f(z) = jzj does not exist at
+# z = 0
+
+# ituitively, in one dimensional space, the condition that a derivative exists 
+# the limit from left of the point equals the limit from the right of the point
+# the point that departs the left area and right area
+# in multi-dimensional case, the hyperplane seperates the space into two parts
+# the partial derivative exists only when partial derivative from different direction 
+# equals. for datapoints landing on the plane,we have beta(0)+sigma(beta_ix_j^i)=0
+# which means that beta has more than one way to change. Therefore the directional 
+# derivatives are different and the derivative does not exist.
+# these points have no effect on classification so they can be ignored
+
+
+
+# part b
+# one of the condition that the steepest descent will finally converge is that after certain times
+# of iteration, the distance between errf(beta) and errf(beta+alpha*d) will be very small. I used this
+# as one of the termination criterion. Another criterion I used is the interation number
+# in the input, tol is the termination criterion for distance between (k+1)th and the kth iteration
+# maxbt is the maximum iterations
+#b
+# in the input, tol is the termination criterion for norm of gradient function for ferror 
+# maxbt is the maximum iterations
+
+steepback <- function(beta,tol,maxbt)
+{ # itc is the iteration counter
+  itc<- 0
+  gnorm <- sqrt(sum(grad(beta)^2))
+  # dis is the distance of the function value between the (k+1)th and the kth iteration 
+  dis <- 1
+  
+  while (dis > tol & itc< maxbt)
+  { 
+    d <- -grad(beta)/gnorm
+    alpha <- 1
+
+    while (errf(beta)<=errf(beta+alpha*d))
+    {alpha <- alpha/2}
+    print (errf(beta))
+    print (errf(beta+alpha*d))
+    
+    dis <- abs(errf(beta+alpha*d)-errf(beta))
+    print (dis)
+    beta <- beta+alpha*d
+    itc<- itc+1
+    print(itc)
+    gnorm <- sqrt(sum(grad(beta)^2))
+    
+
+  }
+  
+  return (beta)
+}
+
+tol <- 1e-3
+maxbt <- 1000
+beta <- rnorm(9)
+beta<- steepback(beta,tol,maxbt)
+# the iteration number is 784
+> beta
+> beta
+[1]  8.698609e-02  2.925049e-03 -3.621113e-03  3.981868e-03  9.230469e-05 -2.192790e-02
+[7]  5.914125e-02 -2.342613e-02  8.370993e-01
+
+
+# part c
+##i
+# the hyperplane beta[9]+sum(beta[1:8]*x)=0
+# matrix Q containis 7 orthonormal vector each parallel to the seperating hyperplane
+# initialized matrix Q
+u=beta[1:8]/sqrt(sum(beta[1:8]^2))
+#hyperplane: sum(beta[1:8]*x)+beta[9]=0
+Q=matrix(1,8,7)
+Q[1,]=beta[9]/beta[1]
+for (i in 1:7){
+  Q[i+1,i]=-beta[9]/beta[i+1]
+}
+#  use grammschmidt function
+Q=gs(Q)
+#q1...q7 are the bases of R7
+
+##ii
+q=Q[,1]
+# the projection(v)=sum-(qi,v)qi.
+# since Q is defined in i, and v is xi. the projection on (q,u),
+# projection(xi)= (xi,q)q+(xi,u)u, i.e. c1=(xi,q) c2=(xi,u)
+
+c=matrix(1,length(y),2)
+for (i in 1:768){
+  c[i,1]=x[i,]%*%q
+  c[i,2]=x[i,]%*%u
+}
+shape=c(length(y))
+shape[y==1]=0
+shape[y==-1]=3
+plot(c,pch=shape)

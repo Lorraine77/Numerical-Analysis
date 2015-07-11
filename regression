@@ -1,0 +1,327 @@
+## problem 1
+
+mydata <- read.table('C:/Users/Administrator/Desktop/BoneMassData.txt')
+# extract female data
+female <- mydata[mydata$gender=='female',c('age','spnbmd')]
+# extract male data
+male <- mydata[mydata$gender=='male',c('age','spnbmd')]
+# reorder age in an increasing order
+female<- female[order(female$age,decreasing=FALSE),]
+male<- male[order(male$age,decreasing=FALSE),]
+
+############################  part a   ########################################
+# function for f
+f <- function(x)
+{
+f <- c(1,x,x^2,x^3)
+return(f)
+}
+
+# function for df
+df <- function(x)
+{
+  df <- c(0,1,2*x,3*x^2)
+  return(df)
+}
+
+# function for ddf
+ddf <- function(x)
+{
+  ddf <- c(0,0,2,6*x)
+  return(ddf)
+}
+
+# to find the constriant matrix M
+M <- function(knots){
+n<- length(knots)
+M <- matrix(0,3*n,4*(n+1))
+for (i in 1:n)
+{
+x0 <- knots[i]  
+# row index (start point)
+r <- 3*i-2
+# column index (start point)
+c <- 4*i-3
+c1 <- seq(c,c+3)
+M[r,c1] <- f(x0)
+M[r,c1+4] <- -f(x0)
+M[r+1,c1] <- df(x0)
+M[r+1,c1+4] <- -df(x0)
+M[r+2,c1] <- ddf(x0)
+M[r+2,c1+4] <- -ddf(x0)
+}
+return(M)
+}
+# check
+knots <- c(15,20)
+M <- M(knots)
+
+###########################    part b (i)   ####################################
+# to form z_bar
+params <- rep(1,12)
+M %*% params
+# the anwser is 0, i.e. vector of 1's is in the feasible set
+z_bar <- params
+
+U <- matrix(runif(6*12),12,6)
+MU <- cbind(t(M),U)
+det(MU) # check for singularity
+Q <- qr.Q(qr(MU))
+P <- Q[,7:12]
+
+##########################   part b(ii)  ############################
+#phi func
+phi = function(c)
+  {
+  p <- P
+  zbar<- z_bar
+  z<- zbar+p%*%c
+  return(z)
+}
+
+# spline function
+S <- function(c,x,knots=knots){
+  s <- NULL
+  z <- phi(c)
+  
+  for (i in 1:nrow(x)){
+    if (x[i,1] < knots[1]){
+      s[i] <- sum(rep(x[i,1],4)^c(0:3) * z[1:4])
+    }
+    if (x[i,1] >= knots[1] & x[i,1] < knots[2]){
+      s[i] <- sum(rep(x[i,1],4)^c(0:3) * z[5:8])
+    } else {
+      s[i] <- sum(rep(x[i,1],4)^c(0:3) * z[9:12])
+    }
+  }
+  return(s)
+}
+
+# error function
+R_female <- function(c){
+  y <- female[,2]
+  r <- sum((y - S(c,female,knots))^2)
+  return(r)
+}
+R_male <- function(c){
+  y <- male[,2]
+  r <- sum((y - S(c,male,knots))^2)
+  return(r)
+}
+
+fem <- nlm(R_female,rep(1,6))
+mal <- nlm(R_male,rep(1,6))
+c_fem <- fem$estimate
+c_mal <- mal$estimate
+
+############################ part b(iii) ##########################
+
+# plot for male
+# I learnt the scatter.smooth function from Eric, thanks
+scatter.smooth(male, col = "blue", main = "Male Data", ylab = "spnbmd", xlab = "Age")
+loess.smooth(x = S(c = c_mal, x = male,knots=knots), y = male[,2])
+legend("topright", c("Data", "Interpolated Spline"), col = c("blue","black"), lty = c(1,1))
+
+ 
+
+
+# plot for female
+scatter.smooth(female, col = "red", main = "Female Data", ylab = "spnbmd", xlab = "Age")
+loess.smooth(x = S(c = c_fem, x = female,knots=knots), y = female[,2])
+legend("topright", c("Data", "Interpolated Spline"), col = c("red","black"), lty = c(1,1))
+
+
+
+##prblem 2
+
+####################### ###  part b  ##################################
+h = function(x, knots=knots){
+  c(1,x,x^2,x^3,max(0,(x-knots[1])^3),max(0,(x-knots[2])^3))
+}
+
+# to form the normal equations for male and female
+# the (i,j)th entry of A is h_j(x_i)
+A_male <- t(sapply(male$age, function(x)h(x,knots=knots)))
+A_female <- t(sapply(female$age,function(x)h(x,knots=knots)))
+
+# B = (t(A)A)^(-1)t(A)y, where y is the spnbmd
+y_male <- male$spnbmd
+B_male = solve(t(A_male)%*%A_male, t(A_male)%*%y_male)
+# B_male
+              [,1]
+[1,]  0.4596996961
+[2,] -0.1396166437
+[3,]  0.0137999681
+[4,] -0.0004148232
+[5,]  0.0010582820
+[6,] -0.0013400175
+
+y_female <- female$spnbmd
+B_female <- solve(t(A_female)%*%A_female,t(A_female)%*%y_female)
+> B_female
+              [,1]
+[1,] -4.2488262561
+[2,]  0.9762416222
+[3,] -0.0716498836
+[4,]  0.0017068581
+[5,] -0.0021304673
+[6,]  0.0007280496
+
+
+# bring B back into spline function
+
+S2 = function(B, x, knots=knots){
+ B %*% sapply(x, function(x)h(x,knots))
+}
+
+
+
+opt_male <- S2(t(B_male),male$age,knots=knots)
+opt_female <- S2(t(B_female),female$age,knots=knots)
+
+
+
+####################### #########  part c  ####################################
+# to plot the fitted splines
+# for male
+scatter.smooth(male, col = "blue", main = "normal equation for male", ylab = "spnbmd", xlab = "Age")
+loess.smooth(x = S2(t(B_male),male$age,knots=knots), y = male$spnbmd)
+legend("topright", c("Data", "Spline"), col = c("blue","black"), lty = c(1,1))
+
+
+
+
+#for female
+scatter.smooth(female, col = "red", main = "normal equation for female", ylab = "spnbmd", xlab = "Age")
+loess.smooth(x = S2(t(B_female),female$age,knots=knots), y = female$spnbmd)
+legend("topright", c("Data", "Spline"), col = c("red","black"), lty = c(1,1))
+
+
+## problem 3
+
+#######################  part a #################################################
+x <- female$age
+knots <- seq(x[1],x[259],length.out=22)[2:21]
+h = function(x, knots=knots){
+  c<- c(1,x,x^2,x^3)
+  for (i in 1:20)
+  {
+  c[i+4] <- max(0,(x-knots[i])^3)
+  }
+  return(c)
+}
+
+
+
+
+######################## ###### part b  ########################################
+# to form the second derivative function for h(x)
+ddh=function(x)
+{ knots=knots
+  c <- c(0,0,2,6*x)
+  for (i in 1:20)
+  {
+    c[i+4] <- max(0,6*(x-knots[i]))
+  }
+ return(c) 
+}
+
+# to form the matrix Omega
+k <- knots
+a <- min(x)
+b <- max(x)
+O <- matrix(0,24,24)
+
+# first of all, the first and second row and columns are all zeros
+O[1:2,1:2] <- 0
+
+# for special entries on position (3,3), (3,4),(4,4), I calculated them first
+O[3,3] <- 4*(b-a)
+f <- function(x) {12*x}
+O[3,4] <- integrate(f,a,b)$value
+f <- function(x) {36*x^2} 
+O[4,4] <- integrate(f,a,b)$value
+
+# this is to calculate the entries on the diagnoal line
+for (i in 1:20) 
+{
+  f <- function(x) {2*6*(x-k[i])}
+  O[3,4+i] <- integrate(f,k[i],b)$value
+  g <- function(x) {6*x*6*(x-k[i])}
+  O[4,4+i] <- integrate(g,k[i],b)$value
+}
+
+
+# this is to calculate the entries with consistent expression 
+# h_j''(x)*h_i''(x)=6*(x-knot[i])+*6*(x-knot[j])+
+# the value inside integral is non-zero only when x is greater than max(knot[i],knot[j])
+# I just do the upper triangle part since Omega is a symmetric matrix
+for (i in 1:20)
+{
+  f <- function(x) {36*(x-k[i])^2}
+  O[4+i,4+i] <- integrate(f,k[i],b)$value
+}
+
+for (i in 1:20)
+{
+  for (j in 1:20)
+  { if (i<j )
+  {
+    f <- function(x) {6*(x-k[i])*6*(x-k[j])}
+    O[4+i,4+j] <- integrate(f,k[j],b)$value
+  }
+  }
+}
+
+# complete the lower triangle part of Omega
+for (i in 1:24)
+{
+  for (j in 1:24)
+  {
+    if (i>j)
+    {
+      O[i,j] <- O[j,i]
+    }
+  }
+}
+
+# to form matrix A
+A<- t(sapply(x,function(x)h(x,knots=knots)))
+
+
+# to form y
+y <- female$spnbmd
+
+lamda=seq(1,15,1)
+
+# to plot the spline
+for (i in 1:length(lamda)){
+  beta <- solve((t(A)%*%A+lamda[i]*(O)),tol=10^-20)%*%(t(A)%*%y)
+  y_opt=A%*%beta
+  plot(x,y,type="p",col='blue')
+  par(new=T)
+  plot(x,y_opt,main= i,col='red')
+  
+}
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Pic # 15
+
+ 
+
+
+# I think when lamda is smaller the spline fits better.

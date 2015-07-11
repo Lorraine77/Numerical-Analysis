@@ -1,0 +1,265 @@
+
+##Prob 1
+A = matrix(c(9.681,9.4,8.025, 2.196, 8.074, 7.650, 1.256, 8.314, .226, 7.305, .652, 2.699, 8.327, 2.132, 4.707, 8.304, 8.632, 4.887, 2.44, 6.306, .652, 5.558, 3.352, 8.798, 1.46, .432, .679, 4.263, 9.496, 4.138, 
+             .667, 2.041, 9.152, .415, 8.777, 5.658, 3.605, 2.261, 8.858, 2.228, 7.027, 3.516, 3.897, 7.006, 5.579, 7.559, 4.409, 9.112, 6.686, 8.583, 2.343, 1.272, 7.549, .88, 8.057, 8.645, 2.8, 1.074, 4.83, 2.562),30,2)
+c = c(0.806, 0.517, 0.100, 0.908, 0.965, 0.669, 0.524, 0.902, 0.531, 0.876,0.462,
+      0.491, 0.463, 0.714, 0.352, 0.869, 0.813, 0.811, 0.828, 0.964, 0.789, 0.360,
+      0.369, 0.992, 0.332, 0.817, 0.632, 0.883, 0.608, 0.326)
+
+# function for f, input x is a vector
+f=function(x)
+{
+  x=matrix(as.matrix(x),ncol=2)
+  f=rep(0,nrow(x))
+  for (j in 1:nrow(x)){
+    for (i in 1:30){
+      f[j]=f[j]+1/(sum((x[j,]-A[i,])^2)+c[i])
+    }
+  }
+  return(f)
+}
+
+
+require(lattice)
+
+x <- expand.grid(-20:20,-20:20)
+wireframe(f(x)~x[,1]+x[,2],xlab="x1",ylab="x2")
+
+
+# to construct next generation, there are three steps : selection, recombination and mutation
+# i.e.  every big iteration includes three small iterations
+# selection
+selection <- function(x){
+  m <- nrow(x)
+  n <- ncol(x)
+  y <- matrix(NA,nrow=m,ncol=n)
+  fitness <- f(x)
+  prob <- fitness/sum(fitness)
+  prob <- cumsum(prob)
+  for(i in 1:m){
+    u <- runif(1)
+    index <-which.max(u<prob)
+    y[i,] <- x[index,]    
+  }
+  return(y)
+}
+
+#mutation
+mutation <- function(y,mu,sigma){
+  m <- nrow(y)
+  n <- ncol(y)
+  z <- matrix(NA,nrow=m,ncol=n)
+  for(i in 1:m){
+    u <- runif(1)
+    if(u < (1-mu)){z[i,] <- y[i,]}
+    else{z[i,] <- y[i,]+rnorm(n,mean=0,sd=sigma)}    
+  }
+  return(z) 
+}
+
+#recombination
+recombination <- function(z,r){
+  m <- nrow(z)
+  n <- ncol(z)
+  x <- matrix(NA,nrow=m,ncol=n)
+  for(i in 1:m){
+    u <- runif(1)
+    if(u < (1-r)){x[i,] <- z[i,]}
+    else{
+      lambda <- runif(1)
+      j <- sample(1:m,1)
+      x[i,] <- lambda*z[i,]+(1-lambda)*z[j,]
+    }
+  }
+  return(x)  
+}
+
+
+x <- expand.grid(-15:15,-15:15)
+x <- as.matrix(x)
+max_f <- c()
+best_f <- c()
+for(t in 1:100){
+  best_f[t] <- max(f(x))
+  if(t==1){max_f[t] <- best_f[t]}
+  else{
+    max_f[t] <- max(max_f[t-1],best_f[t])
+  }
+  if(floor(t/5)==t/5){plot(x,xlim=c(7,9),ylim=c(8,10),main=t)} #plot once every 10 generations
+  y <- selection(x)
+  z <- mutation(y,mu=.5,sigma=.1)
+  x <- recombination(z,r=.5)
+}
+plot(1:100,max_f,type="l",main="Best F up to a given generation")
+plot(1:100,best_f,type="l", main="Best F per generation")
+colSums(x)/nrow(x)
+# [1] 8.021306 9.123837
+
+
+##Prob 3
+mydata<- read.table('C:\\Users\\Administrator\\Desktop\\prostate.txt',header=T)
+training<- mydata[mydata$train=='TRUE',1:9]
+fitting <- mydata[mydata$train=='FALSE',1:9]
+row.names(training)<-NULL
+row.names(fitting)<-NULL
+
+## Part a
+################## linear regresssion
+beta_linear <- lm(lpsa~.,data=training)
+# prediction of lpsa by beta_linear 
+pre_linear<- predict(beta_linear,fitting)
+
+# to calculate th mean squared error
+mse_linear <- mean((pre_linear-fitting[,9])^2)
+#  mse_linear
+# [1] 0.521274
+
+
+## Part b
+################## ridge regression
+# the R function I used for ridge regression is lm.ridge in MASS library
+# This is the scaled version of ridge regression, i.e. all x_i's are scaled to
+# have mean 0 and unit variance to obtain ridge coefficients
+
+library(MASS)
+
+
+lambda<- (0:30)/30
+n<- length(lambda)
+beta_ridge<- lm.ridge(lpsa~.,data=training,lambda=lambda)
+
+# ridge_coef is a n*9 matrix, n is the length of vector lambda
+# 9 columns represent beta0, beta1 ¡­¡­, respectively
+coef_ridge<- coef(print(beta_ridge))
+
+# design is a 30*9 matrix whose first column is all one's 
+# and the rest is matrix 'fitting'
+design <- matrix(0,nrow(fitting),ncol(fitting))
+design[,1] <- 1
+design[,2:9]<- as.matrix(fitting[,1:8])
+
+# predict the lpsa value using coef we got from ridge regression
+# pre_ridge is a 30*n matrix, each row represents the predicted value
+# for lpsa of ith data, each column correspond to a value of lambda
+pre_ridge <- design%*%t(coef_ridge)
+# check: the first five entries of column one (where lambda=0) is
+# pre_ridge[,1][1:5]
+#[1] 1.969038 1.169956 1.261179 1.883759 2.544319
+# the first five entries of pre_linear is 
+# pre_linear[1:5]
+# 1        2        3        4        5 
+#1.969038 1.169956 1.261179 1.883759 2.544319 
+# we can see they are the same
+
+# now we are to calculate the mse of ridge regression
+# each lambda corresponds to a mse
+mse_ridge<- c()
+for (i in 1:n)
+{
+  mse_ridge[i]<- mean((pre_ridge[,i]-fitting[,9])^2) 
+  
+}
+# mse_ridge
+#[1] 0.5212740 0.5209396 0.5206085 0.5202806 0.5199558 0.5196342 0.5193156 0.5190001
+#[9] 0.5186877 0.5183783 0.5180718 0.5177682 0.5174676 0.5171698 0.5168748 0.5165827
+#[17] 0.5162933 0.5160067 0.5157228 0.5154415 0.5151630 0.5148870 0.5146137 0.5143429
+#[25] 0.5140747 0.5138090 0.5135458 0.5132851 0.5130268 0.5127709 0.5125174
+# mse_ridge[1] is the same as the mse_linear (because when lambda=0, ridge regression
+# is the same as linear regression)
+
+
+## Part c
+################## lasso regression
+library(lasso2)
+beta_lasso<- l1ce(lpsa~.,data=training,bound=lambda)
+
+# coef_lasso is a n*9 matrix, column i corresponds to beta(i-1)
+# each row corresponds to a value of lambda
+coef_lasso<- coef(beta_lasso)
+
+
+# c is a vector stores infomation of how many of the 
+# 8 fitting parameters are non-zero
+c<- c()
+for (i in 1:n)
+{
+  c[i] <- sum(coef_lasso[i,2:9]!=0)
+  
+}
+# > c[1] 
+# 0 1 1 1 1 1 2 2 3 3 3 3 5 5 5 5 5 6 7 7 7 7 7 7 7 7 7 7 7 8 8
+# we can see here when lambda increases, the number of covariates which doee not
+# equal zero is also increasing, i.e, the accuracy of lasso rigression increases
+# when lambda gets larger
+
+
+# prediction
+pre_lasso<-  design%*%t(ridge_coef)
+# test:
+#> pre_lasso[,1][1:5]
+# [1] 1.969038 1.169956 1.261179 1.883759 2.544319
+# which is the same as pre_linear
+
+mse_lasso <- c()
+for (i in 1:n)
+{
+  mse_lasso[i]<- mean((pre_lasso[,i]-fitting[,9])^2) 
+  
+}
+
+
+## Part d
+# in part a, the mse of linear regression is 0.521274
+# in part b, taking lambda as (0:30)/30, the minimum of mse is 0.5125174
+# in part c, taking the same value of lambda, the minmun of mse is 0.0.5125174
+# as we can see, the lasso regression and ridge regression has smaller mse,
+# which shows their advantage over linear regression
+
+## Part e
+# from coef_lasso, we can see that with lambda varying, only beta1 and beta2 has
+# the least zero value, I think they are more important, therefore, I decided to
+# use the covariate lcavol and lweight
+
+# At first I don't know how to apply the grid, then I read Ben's code on the 
+# board, thanks for Ben, now I know how to apply the grid, it really makes the
+# problem much easier
+
+A<- as.matrix(mydata[,1:2])
+y<- mydata[,9]
+
+beta_finding <- function(t){
+  nodes <- 2*t/100
+  a1 <- a2 <- seq(from=-t,to=t,by=nodes)
+  grid <- expand.grid(lcavol=a1,b_lweight=a2)
+  grid <- as.matrix(grid)
+  grid <- grid[rowSums(abs(grid)) <= t,]
+  n <- nrow(grid)
+  
+  min_error <- sum( (A%*%grid[1,] - y)^2 )
+  b <- grid[1,]
+  
+  for(i in 2:n){
+    error <- sum( (A%*%grid[i,] - y)^2 )
+    if(error <= min_error){
+      beta <- grid[i,]
+      min_error <- error
+    }
+  }
+  return(beta)  
+}
+
+my_coef <- matrix(NA,nrow=500,ncol=2)
+lasso2_coef <- matrix(NA,nrow=500,ncol=2)
+for(i in 1:500){
+  my_coef[i,] <- beta_finding(.01*i)
+  fit<- l1ce(lpsa~lcavol+lweight,data=mydata,bound=.01*i,absolute.t=TRUE)
+  lasso2_coef[i,] <- coefficients(fit)[-1]
+}
+
+plot(my_coef,xlim=c(0,0.8),ylim=c(0,1),xlab="",ylab="",pch="x")
+par(new=T)
+plot(lasso2_coef,xlim=c(0,0.8),ylim=c(0,1),xlab="b_lcavol",ylab="b_lweight")
+
+
+# from the graph, we can see that the lambda from to methods kind of converge to
+# the same point, however, their route are very different.

@@ -1,0 +1,434 @@
+
+##   Prob #2  ##
+
+Fapprox<- function(a,b,n,method)
+{ 
+  delta_x <- (b-a)/n
+  
+  # At first I used the left boundary of rectangle to evaluate the function
+  # however the difference is big from the result got from trapezoid and Ruse
+  # therefore I turn to use the middle point of the rectangle and
+  # evaluating the function there, the result is much better
+  
+  if (method=='reimann') 
+  {
+  a1 <- 0:(n-1)
+  a2 <- a+a1*delta_x+delta_x/2 
+  a3 <- exp(-a2^2/2)/sqrt(2*pi)*delta_x
+  appro1 <- sum(a3)
+  return(appro1)
+}
+ if (method=='trapezoid')
+  {
+   b1 <- a+(0:(n-1))*delta_x
+   b2 <- a+(1:n)*delta_x
+   c1 <- exp(-b1^2/2)/sqrt(2*pi)*delta_x
+   c2 <- exp(-b2^2/2)/sqrt(2*pi)*delta_x
+   appro2<- sum((c1+c2)/2)
+    return(appro2)
+  }
+ 
+  if (method=='useR')
+  {
+    f <- function(x) {exp(-x^2/2)/sqrt(2*pi)}
+    appro3<- integrate(f,lower=0,upper=10,subdivisions = n)$value
+    return(appro3)
+  }
+}
+
+
+
+# for Reimann sum, try n=10, 100, 1000, 10000
+sapply(c(10,100,1000,10000),function(n){x=Fapprox(0,50,n,'reimann')})
+# the answers are
+[1] 0.0876415 0.5000000 0.5000000 0.5000000
+
+# for trapezoid, try n=10, 100, 1000, 10000
+sapply(c(10,100,1000,10000),function(n){x=Fapprox(0,50,n,'trapezoid')})
+#the answers are
+[1] 0.9973631 0.5000000 0.5000000 0.5000000
+
+# for useR, try n=10, 100, 1000, 10000
+sapply(c(10,100,1000,10000),function(n){x=Fapprox(0,50,n,'useR')})
+ [1] 0.5 0.5 0.5 0.5
+
+# As we can see, when n is small, trapezoid method is more accurate than Reimann method, that’
+# because the error of Reimann method is constant*O(delta_x), while the error of Trapezoid is #constant*O(delta_x^2), However, when n gets larger, the difference become trivial.
+
+
+#############################################################################
+#############################################################################
+### Prob #3 ##
+### Part a ###
+
+library('Matrix')
+
+mydata <- read.table('C:/Users/Administrator/Desktop/ca-GrQc.txt/CA-GrQc.txt')
+mydata <- as.matrix(mydata)
+
+# extract the fromnodeid and tonodeid, use unique function
+fromnode <- as.vector(unique(mydata[,1]))
+tonode <- as.vector(unique(mydata[,2]))
+
+# to sort fromnode and tonode to make them vectors ordering increasingly
+re.fromnode <- sort(fromnode,decreasing=FALSE)
+re.tonode <- sort(tonode,decreasing=FALSE)
+
+# we can check that re.fromnode and re.tonode are the same vector now
+# they both have 5242 entries
+# now to form the matrix representing the graph of the network
+# the (i,j) entry is 1 if there's a link from j to i
+# otherwise it's zero
+
+n.node <- length(fromnode)
+A <- matrix(0,n.node,n.node)
+
+for (i in 1:n.node)
+{ # first find out the values that the ith node points to
+  x1<- mydata[mydata[,1]==re.fromnode[i],2]
+  # then find out the positions of these values in re.tonode
+  x2 <- match(x1,re.tonode)
+  A[x2,i] <- 1
+  
+}
+
+#test
+# we know that there's an edge from 3466 yo 937, 
+# test whether our matrix is correct
+
+from<- match(3466,re.fromnode)
+to<- match(937,re.tonode)
+A[to,from]
+# the answer is 1, therefore our matrix is correct
+
+
+# let's come to the pagerank part
+
+
+
+# use A to derive matrix Q in which each entry in the column 
+# is divided by Nj (Nj is the total # of outlinks of node j)
+# and  each column sum up to 1
+
+k<- rep(0,n.node)
+for (i in 1:n.node)
+{
+  
+  k[i]<- sum(A[,i])
+  
+}
+
+k[k!=0] <- 1/k[k!=0]
+Q <- A*rep(k,each=n.node)
+
+# write a function to compute B, the in put is p
+B_prob <- function(p){
+# to form matrix B=B1+B2
+# B1
+B1 <- p*Q
+# B2
+e <- rep(1,n.node)
+B2 <- (1-p)*e%*%t(e)/n.node
+# B
+B <- B1+B2
+return(B)
+}
+
+# use power method to find the principal eigen-vector of B
+# initialize the value of n, w and lambda
+# n is the number of iteration
+# w is an arbitrary  vector as an intial vector
+# lambda is an initial value of eigenvalue
+
+
+power <- function(M,w,epi)
+{ n <- 0
+  u <- w/sqrt(sum(w^2))
+ while (sqrt(sum((M%*%u-as.numeric(lambda)*u)^2))>epi)
+ {
+   w <- M%*%u
+   u <- w/sqrt(sum(w^2))
+   lambda <- t(u)%*%M%*%u
+   # print(lambda)
+   n <- n+1
+   # print(n)
+ } 
+  
+  highestnode <- re.tonode[match(max(abs(w)),abs(w))]
+  # actually since w is a vector representing probabilities
+  # all of its entries should be positive
+  # so we can express highestnode as
+  # highestnode <- re.tonode[match(max(w),w)]
+  
+return(list(lambda_final=lambda,iternum=n,highestnode=highestnode,evector_final=u))
+}
+      
+epi <- 10^-3
+w<- rnorm(n.node)
+lambda<- rnorm(1)
+B <- B_prob(0.15)
+evalue1 <- power(B,w,epi)$lambda_final
+evalue1 <- as.numeric(evalue1)
+evector1 <- power(B,w,epi)$evector_final
+# sum(evector1>0)
+# [1] 5242 which shows that all the entries in evector1 are positive
+# test the highest node is 14265
+# match(14265,re.tonode)
+#[1] 2775
+#evector1[2775]
+#[1] 0.0384031
+# evector1[evector1>0.037]
+#[1] 0.0384031
+# Therefore the highest node is exactly 14265
+
+p<- seq(0.05,0.30,0.05)
+
+for(i in 1:length(p))
+{
+  
+  B <- B_prob(p)
+  w <- rnorm(n.node)
+  lambda<- rnorm(1)
+  start <- proc.time()
+  a<- power(B,w,epi)$lambda
+  b<- power(B,w,epi)$iternum
+  c<- power(B,w,epi)$highestnode
+  d<- proc.time()-start
+  mylist <- list(lambda=a,iternum=b,highestnode=c,time=list(d))
+  print(mylist)
+}
+# I picked several values of p to make analysis
+# when p=0.05
+> mylist
+$lambda
+          [,1]
+[1,] 0.9999998
+
+$iternum
+[1] 4
+
+$highestnode
+[1] 14265
+
+$time
+$time[[1]]
+   user  system elapsed 
+   8.01    0.03   11.20
+
+#when p=0.10
+$lambda
+         [,1]
+[1,] 1.000001
+
+$iternum
+[1] 5
+
+$highestnode
+[1] 14265
+
+$time
+$time[[1]]
+   user  system elapsed 
+   9.72    0.04   10.22 
+
+#when p=0.15
+$lambda
+     [,1]
+[1,]    1
+
+$iternum
+[1] 7
+
+$highestnode
+[1] 14265
+
+$time
+$time[[1]]
+   user  system elapsed 
+  13.62    0.02   17.23 
+
+#when p=2.0
+$lambda
+     [,1]
+[1,]    1
+
+$iternum
+[1] 7
+
+$highestnode
+[1] 14265
+
+$time
+$time[[1]]
+   user  system elapsed 
+  14.09    0.03   20.71 
+
+# when p=3.0
+$lambda
+          [,1]
+[1,] 0.9999992
+
+$iternum
+[1] 9
+
+$highestnode
+[1] 14265
+
+$time
+$time[[1]]
+   user  system elapsed 
+  17.32    0.02   20.69 
+
+# as we can see, the highestnode in each case is the same: 14254
+# however, the time takes to convergent is different
+# I noticed that the time are the same when p=1.5 and p=3.0
+# the number of iteration when p=0.15 is not the smallest
+# which caught me in doubt why p =0.15 is the optimal value 
+
+## ## Part b #####
+
+# I used deflation to compute the second largest eigenvalue
+# change B into B_new =B- evalue1*evector1%*%t(x)
+# where evalue1 is the dominant evalue and evector1 is the corresponding evector
+# x is a vector satisfies x= (kth row 0f B)/(evalue1*(kth vector of evector1))
+# which is called Wielandt Deflation
+# theoreticaly k can be any index but here we choose k to be the smallest index
+
+k <- 1
+
+# the value of kth entry of evector1
+a <- evector1[k]*value1
+# [1] 0.01166743
+# let v_k be the kth row of B
+v_k <- as.vector(B[k,])
+v_k <- v_k/a
+
+# fomr the new matrix
+B_new <- B-as.numeric(evalue1)*evector1%*%t(v_k)
+# deleting the first row and first column
+B_new <- B[2:n.node,2:n.node]
+w<- rnorm(n.node-1)
+lambda<- rnorm(1)
+evector2 <- power(B_new,w,epi)$evector_final
+evalue2 <- power(B_new,w,epi)$lambda_final
+evalue2 <- as.numeric(evalue2)
+evector2<- c(0,evector2)
+
+evector2_final <- (evalue2-evalue1)*evector2+evalue1*as.numeric((v_k%*%evector2))*evector1evalue2 <- power(B_new,w,epi)$lambda_final 
+[1,] 0.809574
+
+
+################################################################################################################################################################## Prob #3 #####
+### part a ###
+
+mydata <- read.table('C:/Users/Administrator/Desktop/nist.txt',header=T)
+x_data<-mydata$x
+y_data<-mydata$y
+
+# the function for f
+f=function(x,beta){
+  x1=exp(-beta[2]*x)
+  x2=exp(-((x-beta[4])^2)/(beta[5]^2))
+  x3=exp(-((x-beta[7])^2)/(beta[8]^2))
+  sum=beta[1]*x1+beta[3]*x2+beta[6]*x3
+  return(sum)
+}
+
+# function for E
+E = function(x_val,y_val,beta){
+  f =f(x_val,beta)
+  E_sum=sum((y_val-f)^2)
+  return(E_sum)
+}
+
+# function to compute the gradient
+Mygradient=function(f,x,...){
+  grad=c()
+  for (i in 1: length(x)){
+    x_h1=x_h2=x
+    x_h1[i]=x[i]+10^-5
+    x_h2[i]=x[i]-10^-5
+    grad[i]=(f(x_h1,...)-f(x_h2,...))/(2*10^-5)
+  }
+  return(grad)
+}
+ 
+
+
+beta=rnorm(8,0,1)
+
+Mygradient(E,x_val=x_data,y_val=y_data,beta)
+# the answer is 
+114.61549 1295369.04745      26.38548    -494.45688   -2034.12966     122.55178     300.70987    -657.14926
+
+
+#### part b ####
+require(rootSolve)
+library(rootSolve)
+
+# to form the modified Newton’s Method
+x=x_data
+y=y_data
+beta=beta_initial
+
+newton_modi=function(x,y,beta,epi){
+g=Mygradient(E,beta,x_val=x,y_val=y)
+norm_g=sqrt(sum(g^2))
+ H=hessian(E,beta,x_val=x,y_val=y)
+i=0
+while(abs(norm_g)>=epi&i<=1000){
+# consider the situation when H is singular
+if (det(H)!=0 && kappa(H)<10^10){
+d=-solve(H,g)
+if(d%*%g<0){
+alpha=1
+while(E(x,y,beta+alpha*d)>=E(x,y,beta)){
+alpha=alpha/2
+          }
+        }
+else{
+d=-g/norm_g
+alpha=1
+while(E(x,y,beta+alpha*d)>=E(x,y,beta)){
+alpha=alpha/2
+          }
+        }
+    }
+
+else{
+d=-g/norm_g
+alpha=1
+while(E(x,y,beta+alpha*d)>=E(x,y,beta)){
+alpha=alpha/2
+        }
+      }
+beta=beta+alpha*d
+g=Mygradient(E,beta,x_val=x,y_val=y)
+norm_g=(sum(g^2))^0.5
+    H=hessian(E,beta,x_val=x,y_val=y)
+print(beta)
+i=i+1
+print(norm_g)
+    }
+return(list(beta=beta,iteration=i))
+}
+
+beta_initial=c(96,.009,103,106,18,72,151,18)
+x=x_data
+y=y_data
+
+op_beta <- newton_modi(x_data,y_data,beta_initial,0.01)$beta
+iternum <- newton_modi(x_data,y_data,beta_initial,0.01)$iteration
+
+>iternum
+[1] 7
+
+
+### part c ####
+y_reg=f(x,op_beta)
+plot(x_data,y_data)
+par=TRUE
+lines(x_data,y_reg,col="green",lwd=4)
+
+
+ 

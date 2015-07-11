@@ -1,0 +1,165 @@
+####### part a #############
+# the function is exp(x)
+# the first derivative (true value) is exp(x)
+# the approximation of first derivative is (exp(x+h)-exp(x-h))/2h
+# the estimation of first derivative function f_est <- function(x,h)
+{
+df <- (exp(x+h)-exp(x-h))/(2*h)
+return (df) }
+x<- 0
+# the actual value of f'(x) is exp(x) f_actual <- exp(x)
+# according to theoretical analysis, the minimal value of h should be around
+# 10(-3/16), which corresponds to log(10^(-3/16))=-3/16
+# first I made the length of h 1000 , the picture I plotted showed that the minimum
+# of log10(h) is around -3, so I think the length is not big enough so the
+# answer is far from accurate. Then I tried length= 10000, the minimal point gets
+# closer to -4, and then length=100000, the minimal point moves to -5, then
+# length = 1000000,the minimal point moves between -5 and -6, then length=10000000 # the minimal points stays almost the same. Therefore I think setting length=1000000
+# is enough and reasonable.
+h <- seq(1,10^(-16),length=1000000) error1 <- abs(f_actual-f_est(x,h))
+logh <- log10(h)
+logerror1 <- abs(f_actual-f_est(x,logh))
+plot(logh,error1,main='error with respect to log(h)',type='l')
+￼plot(logh,logerror1,main='logerror with respect to log(h)',type='l')
+￼# as we can see, plotting error with respect to log(h) is more reasonable and it shows correctly # the relationship between error function and h, that is: when h is around 10^(-3/16), the error # is minimal, when h decreases or increases from 10^(-3/16), error becomes larger.
+## Problem #4
+########################## part a ############################### # the function for f(x)
+f <- function(x)
+{
+f <- exp(prod(x[1:5]))-((x[1])^3+(x[2])^3+1)^2/2
+return(f) }
+# the function of gradient of f(x) grad_f <- function(x)
+{ b <- c()
+b[1] <- prod(x[c(2:5)])*f(x)-(x[1]^3+x[2]^3+1)*3*x[1]^2 b[2] <- prod(x[c(1,3,4,5)])*f(x)-(x[1]^3+x[2]^3+1)*3*x[2]^2 b[3] <- prod(x[c(1,2,4,5)])*f(x)
+b[4] <- prod(x[c(1,2,3,5)])*f(x)
+b[5] <- prod(x[c(1:4)])*f(x)
+return(b)
+}
+# the function of g1(x) g1 <- function(x)
+{
+return(as.numeric(t(x)%*%x-10)) }
+# the function for gradient of g1(x) is 0 grad_g1 <- function(x)
+{
+b <- c()
+b <- 2*x return(b)
+}
+# the function of g2(x) g2 <- function(x)
+{
+return(x[2]*x[3]-5*x[4]*x[5]) }
+# the function of gradient of g2(x) grad_g2 <- function(x)
+{
+b <- rep(0,5) b[2]<- x[3] b[3]<- x[2] b[4]<- -5*x[5] b[5]<- -5*x[4]
+return(b) }
+# the function of g3(x) g3<- function(X)
+{
+d<- x[1]^3+x[2]^3+1
+return(d) }
+# the gradient function of g3(x) grad_g3 <- function(x)
+{
+b <- rep(0,5) b[1]<- 3*x[1]^2 b[2] <- 3*x[2]^2 return(b)
+}
+# the function of g(x) g <- function(X)
+{
+g <- c() g[1]<- g1(x) g[2] <- g2(X) g[3] <- g3(x) return(g)
+}
+# the function of gradient of g(x) grad_g <- function(x)
+{
+return(cbind(grad_g1(x),grad_g2(x),grad_g3(x)))
+}
+x <- c(-1.71,1.59,1.82,-0.763,-0.763)
+# check grad_f(x)
+# [1] -0.07660523 -0.24893252 -0.08848207 0.21105816
+# first check if x is on the space of g(x) span_g=qr.Q(qr(grad_g(x))) proj_gf=grad_f(x)%*%span_g%*%t(span_g)
+0.21105816
+# [,1] [,2] [,3] [,4] [,5]
+# [1,] -0.07662857 -0.2489055 -0.08852541 0.2110608 0.2110608
+# as we can see, the projection of gradient of f is almost the same as the gradient of f
+# that is to say, gradient of f is on the plane spanned by grad_g1,grad_g2 and grad_g3
+# therefore we can express grad_f as linear combination of grad_g1, grad_g2 and grad_g3
+# we choose the coefficient as lambda=(lambda1, lambda2 and lambda3)
+# now to find lambda
+# since grad_f = lambda1*grad_g1+lambda2*grad_g2+lambda3*grad_g2 (1)
+# also we have grad_f = a1*span_g1+a2*span_g2+s3*span_g3 (2)
+# equate (1) and (2)
+# we have lambda=inv(t(span_g)%*%grad_g)%*%a, where a=(a1,a2,a3)
+# we first compute a, since a are the coefficients of orthonormal basis
+# we have
+a1 <- t(span_g[,1])%*%grad_f(x)
+a2 <- t(span_g[,2])%*%grad_f(x)
+a3 <- t(span_g[,3])%*%grad_f(x)
+a <- c(a1,a2,a3)
+# now to compute lambda
+lambda <- solve(t(span_g)%*%grad_g(x),a)
+# the answer is
+# lambda
+# [1] -0.04127466 0.03881406 -0.02482677 # to check this critical point grad_f(x)-grad_g(x)%*%lambda
+# the answer is
+# [1,] 2.333681e-05
+# [2,] -2.699228e-05
+# [3,] 4.333436e-05
+# [4,] -2.591833e-06
+# [5,] -2.591833e-06
+# as we can see the answer is almost 0 within round-off error # there for the point x is the point of lagrangian
+# to form the lagragian function x_new<- c(x,lambda)
+L <- function(x)
+{
+l <- f(x[1:5])-x[6]*(t(x[1:5])%*%x[1:5]-10)-x[7]*(x[2]*x[3]-5*x[4]*x[5])-x[8]*(x[1]^3+x[2]^3+1) return(l)
+}
+# now to compute the hessian of lagrangian
+# Omar shared a method of using package in R to get the Hessian # I uesd this method and it's very convenient
+install.packages("numDeriv") require(numDeriv)
+Hessian <- function(x,lambda) {
+x_new<- c(x,lambda)
+h <- hessian(fun=L,x=x_new) return(h)
+}
+h <- hessian(fun=L,x=x_new)
+#h
+# [,1] [,2]
+#[1,] -7.676649e+01 -66.64353042 -9.765005e-02 2.329267e-01 2.329267e-01
+#[2,] -6.664353e+01 -57.20380814 6.620581e-02 -2.505061e-01 -2.505061e-01
+#[3,] -9.765005e-02
+#[4,] 2.329267e-01
+#[5,] 2.329267e-01
+#[6,] 3.420000e+00
+#[7,] 3.744448e-14
+#[8,] -8.772300e+00
+# [,6]
+#[1,] 3.420000e+00
+#[2,] -3.180000e+00 -1.820000e+00 -7.584300e+00
+#[3,] -3.640000e+00 -1.590000e+00 3.779605e-16
+#[4,] 1.526000e+00 -3.815000e+00 6.081359e-16
+#[5,] 1.526000e+00 -3.815000e+00 -1.918826e-15
+#[6,] 0.000000e+00 1.282212e-28 0.000000e+00
+#[7,] 1.282212e-28 3.914994e-11 1.948962e-27
+-0.25050610 -2.188487e-01 -0.25050610 -2.188487e-01
+8.821278e-01 7.160948e-01
+7.160948e-01 8.821278e-01
+[,3] [,4] [,5]
+0.06620581 2.230788e-01 -2.188487e-01 -2.188487e-01
+-3.18000000 -3.640000e+00
+-1.82000000 -1.590000e+00 -3.815000e+00 -3.815000e+00
+-7.58430000 3.779605e-16 6.081359e-16 -1.918826e-15 [,7] [,8]
+3.744448e-14 -8.772300e+00
+1.526000e+00
+1.526000e+00
+#[8,] 0.000000e+00 1.948962e-27 3.970970e-16
+# Finally to compute the eigenvalues of Hessian Matrix
+eigen(h)
+#$values
+#[1] 7.0313276 6.1300341 0.9938333 0.1687190 0.1660330 -5.0576973 #[7] -6.0666131 -135.3485987
+# since there are positive and negative eigenvalues, we can tell that x is a saddle point
+######################### partb ############################### # Newton Method
+x1=c(-1.8,1.7,1.9,-0.8,-0.8)
+x2=c(0,0,0,0,0)
+grad_L=function(x,lambda){
+d =c(grad_f(x)-grad_g(x)%*%lambda,g(x)) return(d)
+}
+NL=function(x,lambda,epsion){ param=c(x,lambda) while(sum(grad_L(x,lambda)^2)>epsion){
+param=param-solve(Hessian(x,lambda))%*%grad_L(x,lambda)
+print(sum(grad_L(x,lambda)^2)) }
+return(param) }
+lambda=runif(3,0,1)
+op1=NL(x1,lambda,0.1)
+# the sistem is exactly singular
+op2=NL(x2,lambda,0.1)
+# the function almost does not proceed

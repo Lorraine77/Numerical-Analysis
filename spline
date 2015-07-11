@@ -1,0 +1,233 @@
+#Problem 2
+#a
+# I extracted the data where age is above 40 out to form a separate txt
+# life_exp is a data frame with 61 observations and two variables
+life_exp<- read.table("C:/Users/Administrator/Desktop/life_exp over 40.txt",header=T)
+t=c(1,61)
+L_age=function(t){
+  #calculate the probability of death
+  prob_death=c()
+  for (i in 1:length(t)){# if we do not vectrize it, we cannot integrate later
+    if(t[i]==0){
+      prob_death[i]=0
+    }
+    else{
+      prob_death[i]=life_exp$qx[41]
+      if(t[i]==1){
+        prob_death[i]=prob_death[i]
+      }
+      if(t[i]>=61){
+        for (j in 1:60){
+          prob_death[i]=prob_death[i]+prod(1-life_exp$qx[41:(40+j)])*life_exp$qx[(41+j)]
+        }
+      }
+      else{
+        for (j in 1:(t[i]-1)){
+          prob_death[i]=prob_death[i]+prod(1-life_exp$qx[41:(40+j)])*life_exp$qx[(41+j)]
+        }
+      }
+    }
+  }
+  prob_live=1-prob_death
+  return(prob_live)
+}
+
+
+L=function(t){
+  l=c()
+  x=seq(0,61,1)
+  y=L_age(x)
+  spline_f=splinefun(x,y)
+  for (i in 1:length(t)){
+    if #is.integer(t){
+    (t[i]%%ceiling(t[i])==0|t[i]==0){ # here ceiling is the only choice
+      l[i]=L_age(t[i])
+    } 
+    
+    else{
+      if(t[i]<=61){
+        l[i]=spline_f(t[i])
+      }
+      else{
+        l[i]=spline_f(61)
+      }
+    }
+  }
+  return(l)
+}
+# to test the function
+test=seq(0,80,0.1)
+plot(test,L(test))
+ 
+
+
+
+#b
+#i) E[PV]=  
+#ii)
+DL=function(t){
+d=c()
+  x=seq(0,61,1)
+  y=L_integer(x)
+spline_f=splinefun(x,y)
+for (i in 1:length(t)){
+if(t[i]<=61){
+d[i]=-spline_f(t[i],d=1)
+    }
+else{
+d[i]=0
+    }
+  }
+return(d)
+}
+plot(test,DL(test))
+
+
+ 
+
+
+
+
+#c)
+PV_ave=function(x){
+  m=floor(12*x)
+  e=c()
+for (i in 1:length(m)){
+    PV=sum(200*exp(-0.05*(1:m[i])/12))
+e[i]=PV*DL(x[i])
+  }
+return(e)
+}
+E_PV = integrate(PV_ave,0,60) 
+# E[PV] = 38714.63 with an absolute error smaller than 1.5
+
+
+
+# Problem 3 
+library(TTR) 
+# get close price for stocks when the stocknames is given null
+GetClosePrices = function(stock, startdate , enddate){ 
+
+stocknames = rbind(stockSymbols(exchange="NYSE"),stockSymbols(exchange="NASDAQ")) 
+
+## to get rid of stocks without data in price 
+stocknames = data.frame(stocknames[complete.cases(stocknames),]) 
+ 
+# initialize the close prices matrix 
+close_prices = matrix(data = NA, nrow = nrow(prices), ncol = nrow(stocknames)) 
+colnames(close_prices) = t(stocknames[,1]) 
+for (j in 1:nrow(stocknames)){ 
+## get prices from yahoo index 
+prices = getYahooData(stocknames[j,1], startdate, enddate) 
+if(nrow(prices) == nrow(close_prices)){ 
+close_prices[,j] = as.matrix(prices[,4]) 
+} 
+} 
+close_prices = close_prices[,colSums(is.na(close_prices))<nrow(close_prices)] 
+return(close_prices) 
+} 
+
+
+
+
+
+
+
+
+
+
+ 
+# a 
+## Mu function 
+Getmu = function(stocknames = NULL, startdate, enddate){ 
+if (length(stocknames) == 0){ 
+## get close prices on NASDAQ and NYSE 
+close_prices = as.matrix(GetClosePrices(stocknames, start = startdate, end = enddate)) 
+} 
+##matrix for mu values 
+mu = 0 
+weeks = 0 
+j = 6 
+i = 1 
+# the last is the answer we need
+while(j <= nrow(close_prices)){ 
+ 
+mu = rbind(mu,((close_prices[j,] - close_prices[(j-5),])/close_prices[(j-5),])) 
+weeks = rbind(weeks, colSums(mu)/i) 
+i = i + 1 
+j = j + 5 
+} 
+return(list(mu = mu, r = weeks)) 
+} 
+ 
+## Sigma function## 
+GetSigma = function(stocknames = NULL, mu = NULL, startdate, enddate){ 
+mu = as.matrix(GetMu(stocknames, startdate, enddate)$mu) 
+r = as.matrix(GetMu(stocknames, startdate, enddate)$r) 
+sigma = diag(length(stocknames)) 
+# sigma = (1/(k-1))*sum(r[j,i_1]-mu[i_1])(r[j,i_2)-mu[i_2]] 
+for (i in 1:nrow(sigma)){ 
+for(j in 1:ncol(sigma)){ 
+sigma[i,j] <- length(mu)^-1 * sum((r[,i] - mu[,i]) * (r[,j] - mu[,j])) 
+} 
+} 
+return(sigma) 
+}
+
+
+
+# Problem 4 
+# a) 
+# 2*2 matrix alpha = 1 
+A=c(1,1) 
+x=c(1,0) 
+p=c(-1,1) 
+# then A%*%p = 0 p is orthogonal to A, and A%*%x = 1 
+#Construct F = x+c*p = (1,0) + c*(-1,1) = (-c+1, c) 
+# plot F 
+ 
+c=seq(-10,10,0.1)
+# Therefore F is a line 
+# A%*%F = (1,1) %*%t(-c+1,c) = 1 
+
+# b 
+Getmu = function(stocknames, 20120206, 20140206) 
+sigma = GetSigma(stocknames, 20120206, 20140206) 
+mu = stockData$mu 
+sigma = stockData$sigma 
+n = length(mu) 
+A = rep(1,n) 
+p = matrix(rnorm(n*(n-1)),n,n-1) 
+x=c(1,rep(0,n-1)) 
+alpha=1 
+matrix=alpha*t(p)%*%p 
+f=mu%*%p-alpha*(x%*%p)-alpha*(t(x)%*%t(sigma)%*%p) 
+opc =solve(matrix+t(matrix))%*%t(f) 
+opx =x+p%*%opc 
+#find the first 10 stocks 
+op10x =sort(abs(opx),decreasing=TRUE)[1:10] 
+flag1=c() 
+for (i in 1:10){ 
+flag1[i]=which(abs(opx)==op10x[i]) 
+} 
+opx[flag1] 
+flag1 
+find = stocknames[,1] 
+find[flag1] 
+# [1] "LLTC" "A" "SSLT" "BKU" "NMM" "FLXN" "GTXI" "PAH" "JTPY" "RENN" 
+#c 
+alpha=1101001000 
+matrix2=alpha*t(p)%*%p 
+f=mu%*%p-alpha*(x%*%p)-alpha*(t(x)%*%t(sigma)%*%p) 
+opc=solve(matrix2+t(matrix2))%*%t(f) 
+opx=x+p%*%opc 
+op10x=sort(abs(opx),decreasing=TRUE)[1:10] 
+flag2=c() 
+for (i in 1:10){ 
+flag2[i]=which(abs(opx)==op10x[i]) 
+} 
+flag2 
+find = stocknames[,1] 
+find[flag2] 
+#[1] "A" "LLTC" "SSLT" "BKU" "NMM" "FLXN" "GTXI" "PAH" "JTPY" "RENN" 
+#  there is no big difference on the list of the first 10 stocks

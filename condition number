@@ -1,0 +1,276 @@
+# 2
+b)
+# Code:
+theta=0
+options(digits=16)
+Q <- matrix(c(cos(theta),sin(theta),-sin(theta),cos(theta)),2)
+y <- matrix(c(cos(theta),sin(theta)),2)
+
+# A is a matrix in which each coloum is vector x 
+# corresponding to different values of a, computed by R
+A <- matrix(NA,2,19)
+# B is a matrix in which each column is vector x 
+# corresponding to different values of a, computed by the equation in from a
+b <- matrix(c(cos(theta),sin(theta)),2)
+B <- matrix(NA,2,19)
+k <- c()
+kp <- c()
+for (j in 0:18)
+{
+  a <- 10^j
+  D <- matrix(c(a,0,0,1),2)
+  M <- Q%*%D%*%t(Q)
+  x <- solve(M,y,tol=10^-20)
+  A[1:2,j]<- x
+  B[1:2,j] <- b/a
+  lmin <- min(abs(eigen(M)$values))
+  lmax <- max(abs(eigen(M)$values))
+  k[j] <- lmax/lmin
+  kp[j] <- kappa(M)
+}
+print(A)
+print(B)
+print(k)
+print(kp)
+
+
+# as we can see, the x computed by both ways, one is x =(cos(theta),sin(theta))/a, 
+# the other is by # command solve(M,y,tol=10^-20) are the same
+# the condition number computed by both ways, one is definition ,the other is 
+# using kappa function are almost the same, very close. The precision is 16 digits.
+
+c)
+
+Code:
+theta=pi/4
+options(digits=16)
+Q <- matrix(c(cos(theta),sin(theta),-sin(theta),cos(theta)),2)
+y <- matrix(c(cos(theta),sin(theta)),2)
+
+# A is a matrix in which each coloum is vector x 
+# corresponding to different values of a, computed by R
+A <- matrix(NA,2,19)
+# B is a matrix in which each column is vector x 
+# corresponding to different values of a, computed by the equation in from a
+b <- matrix(c(cos(theta),sin(theta)),2)
+B <- matrix(NA,2,19)
+k <- c()
+kp <- c()
+for (j in 0:18)
+{
+  a <- 10^j
+  D <- matrix(c(a,0,0,1),2)
+  M <- Q%*%D%*%t(Q)
+  x <- solve(M,y,tol=10^-20)
+  A[1:2,j]<- x
+  B[1:2,j] <- b/a
+  lmin <- min(abs(eigen(M)$values))
+  lmax <- max(abs(eigen(M)$values))
+  k[j] <- lmax/lmin
+  kp[j] <- kappa(M)
+}
+print(A)
+print(B)
+print(k)
+print(kp)
+
+
+# the values of x stays similar in both methods when a=0 ,1,……，13, from a= 14, 
+# the values of x # are different in two methods.  When a=15, the value of a 
+# computed by solve(M,y,tol=10^-20) is not correct, the second entry of vector a 
+#cannot be represented by R, however, by using the expression 
+# x =(cos(theta),sin(theta))/a, we can compute a relatively correct until a=16. 
+# However, when a=17 and 18, the values of a cannot be computed by both 
+# methods because of overflow.
+
+
+d)
+# I think the reason is that when a increases, the condition number of matrix M
+# also increases, which means M is getting more and more bad conditioned. When
+# condition number K(M) >=10^16, Mx=Y will be unsolvable in a 64-bit floating
+# point arithmetic. That’s why the condition number only appears between a=0
+# and a=16, when n=17, problem comes, and thus x will become NA after
+# computation in both cases.
+
+
+
+
+
+#5
+a)
+# get a dataframe with stock name information
+stocknames <- stockSymbols(exchange="NYSE")
+
+# to check how many stocks having NA in their data
+j <-1
+b <- c()
+for (i in 1:3282)
+{
+  if (sum(is.na(stocknames[i,]))==0)
+  { b[j] <- i
+    j <- j+1 }
+}
+
+# the result shows there are 809 stocks which do not have NAs in their data
+# delete the stocks (the rows) which have NA
+
+stocknames <- na.omit(stocknames)
+
+# first make a matrix 'stockprice' of 1260*809 and assign NAs to every entry
+# then assign the colnames name with 'stocknames'
+
+stockcp <- matrix(NA,nrow=1260,ncol=nrow(stocknames))
+colnames(stockcp) <- t(stocknames[,1])
+
+# make a function to return a dataframe we need
+# the cols are corrsponding to each Stock's prices of the past 5 years
+# and the rows are the prices of each day for all the stocks
+getcloseprices <- function(stocks)
+{
+  for (j in 1:nrow(stocks)){
+    # download prices
+    prices <- getYahooData(symbol = stocks[j], start = 20080102, end = 20130102)
+    # check whether each stock has 1260 values and has no NA in it
+    if (nrow(prices)==1260 && sum(is.na(prices[,4]))==0)
+{
+  stockcp[,j]<-as.matrix(prices[,4])
+
+}
+  }
+# turn the matrix stockcp into a dataframe
+
+stockcp <- as.data.frame(stockcp)
+
+# add EXXON as the first col
+prices <- getYahooData(symbol = "XOM", start = 20080102, end = 20130102)
+closexom <- as.matrix(prices[,4])
+closexom <- as.data.frame(closexom)
+colnames(closexom) <- c('XOM')
+stockcp <- cbind(closexom,stockcp)
+return(stockcp)
+}
+
+a <- as.matrix(stocknames[,1])
+mystock <- getcloseprices(a)
+# to exclude the stocks which have don't have close prices
+stockcpfinal <- mystock[,colSums(is.na(mystock))==0]
+
+b)
+
+# first change WTI form an excel into a csv file
+# then import data
+# choose the data bewteen 1/2/2008 to 1/2/2013
+begin <- WTI[WTI$Date=='2013/1/2',]
+# the data of 2013/1/2 is on row 273
+end <- WTI[WTI$Date=='2008/1/2',]
+# the data of 2008/1/2 is on row 1532
+y <- WTI[1532:273,5]
+# since 1532-273=1260, which is the same as the number of operation days as 
+# other stocks , we can just use this WTI as response vector
+
+
+c)
+
+# now consider the regression
+# for 10 stocks
+A <- as.matrix(stockcpfinal[,1:10])
+ptm <- proc.time()
+# use normal equation to compute the coefficient vector b
+b11 <- solve(t(A)%*%A)%*%(t(A)%*%y)
+proc.time()-ptm
+# use R function to compute the coefficient vector b
+user system elapsed 
+   0    0    0 
+# show first ten coefficients
+
+ 	row.names	V1
+1	XOM	0.2419893
+2	A	0.5360675
+3	ABEV	-4.3146382
+4	ABG	0.6107819
+5	ABR	1.7992511
+6	ACC	-0.3449412
+7	ACH	-0.1810958
+8	ACM	-0.3563223
+9	ACN	0.5624104
+10	ACT	-0.4107680
+
+
+ptm <- proc.time()
+b12 <- lm(y~ A)
+proc.time()-ptm
+user system elapsed 
+
+
+
+# for 100 stocks
+A <- as.matrix(stockcpfinal[,1:100])
+ptm <- proc.time()
+# use normal equation to compute the coefficient vector b
+b21 <- solve(t(A)%*%A)%*%(t(A)%*%y)
+proc.time()-ptm
+user system elapsed 
+0.03 0.00 0.03
+# show first ten coefficients
+ 
+
+# use R function to compute the coefficient vector b
+ptm <- proc.time()
+b22 <- lm(y~ A)
+proc.time()-ptm
+user system elapsed 
+0.08 0.00 0.09 
+
+
+
+# for 200 stocks
+A <- as.matrix(stockcpfinal[,1:200])
+ptm <- proc.time()
+# use normal equation to compute the coefficient vector b
+b31 <- solve(t(A)%*%A)%*%(t(A)%*%y)
+proc.time()-ptm
+user system elapsed 
+0.17 0.00 0.17
+# show first ten coefficients
+ 
+# use R function to compute the coefficient vector b
+ptm <- proc.time()
+b32 <- lm(y~ A)
+proc.time()-ptm
+user system elapsed  
+0.19 0.03 0.22 
+
+
+
+Names = c("(Intercept)", 
+"AXOM", "AA", "AABEV", "AABG", "AABR", "AACC", "AACH", "AACM", 
+"AACN", "AACT"
+
+# for 300 stocks
+A <- as.matrix(stockcpfinal[,1:300])
+ptm <- proc.time()
+# use normal equation to compute the coefficient vector b
+b41 <- solve(t(A)%*%A)%*%(t(A)%*%y)
+proc.time()-ptm
+user system elapsed 
+0.25 0.00 0.25
+# show first ten coefficients
+ 
+# use R function to compute the coefficient vector b
+ptm <- proc.time()
+b42 <- lm(y~ A)
+proc.time()-ptm
+user system elapsed 
+0.48 0.04 0.53 
+# show first ten coefficients
+
+
+
+
+Discussion:
+1)	With respect to time
+The norm equation method is faster than using R function lm()
+2)	With respect to accuracy
+From the above result we can see that, with n increasing, the difference between coefficients from two methods is getting small. I think it has something to do with data quality. When the number of data increases, the possibility that the data are ‘good’ increases, and therefore it estimates the coefficient more accurately. 
+3)	Respect to different methods
+The normal equation is what we used to solve linear regression problems, however, R may use other method to solve this problem. Errors generated in these two methods are also different, which leads to gap between results of these two method. However, with dataset getting bigger, the difference gets smaller. 

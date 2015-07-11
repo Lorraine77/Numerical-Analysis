@@ -1,0 +1,167 @@
+
+#### prob 2
+##part a
+# suppose the coordinates of the points consist a matrix
+# each col of the matrix represents a point, the size of the matrix is 3*n
+# function for distance r
+# x is a matrix contains n molecule, each column is a molecule
+# i and j represents the ith and jth molecule
+r=function(x,i,j)
+{ A<- matrix(x,3)
+  temp <- A[,i]-A[,j]
+  r <- sqrt(sum(temp^2))
+  return(r)
+}
+
+# function for energy
+energy =function(x)
+{
+  A<- matrix(x,3)
+  n <- ncol(A)
+  e <- 0
+  # don't forget to add bracelet on n-1 and i+1!!!!!!
+  for (i in 1:(n-1))
+  {
+    for (j in (i+1):n)
+    
+     { r_temp<- r(x,i,j)
+      
+      e <- e + 1/(r_temp^12)-2/(r_temp^6)
+      
+    }
+    }
+  
+  return(e)
+}
+
+# function for gradient of energy
+grad_e =function(x)
+{ 
+  A <- matrix(x,3)
+  n <- ncol(A)
+  # out <- matrix(0,3,n)
+  out<- c()
+  for (i in 1:n)
+  { temp1 <- 0
+    temp2 <- 0
+    temp3 <- 0
+    for (j in 1:n)
+    { if (j!=i)
+      {r_temp <- r(x,i,j)
+      temp1 <- temp1+(-12*r_temp^-13+12*r_temp^-7)*(A[1,i]-A[1,j])/r_temp
+      temp2 <- temp2+(-12*r_temp^-13+12*r_temp^-7)*(A[2,i]-A[2,j])/r_temp
+      temp3 <- temp3+(-12*r_temp^-13+12*r_temp^-7)*(A[3,i]-A[3,j])/r_temp
+    }}
+    
+    #out[,i] <- c(temp1,temp2,temp3)
+    out[(1:3)+3*(i-1)]<- c(temp1,temp2,temp3)
+    out[c(1:3,5,6,9)]<-0
+    norm <- sqrt(sum(out^2))
+    normalized <- out/norm
+  }
+  return(list(gradient=out,norm=norm,normalized=normalized))
+}
+
+##part b
+# function for alpha
+alpha =function(x)
+{
+  d<- -grad_e(x)$normalized
+  temp <- 1
+  i<-0
+  while (energy(x+temp*d)>=energy(x))
+  {
+    temp <- temp/2
+    i<- i+1
+    # print(i)
+  }
+  return(temp)
+}
+
+# function of steepest descent method
+sd =function(x,eps)
+{
+  i<- 0
+  while (grad_e(x)$norm>eps)
+  {
+    x<- x-alpha(x)*grad_e(x)$normalized
+    i<- i+1
+    print(i)
+  }
+  return(x)
+}
+
+# when m=3 there are 3 molecules
+x<- c(0,0,0,1,0,0,1,1,0)
+eps <- 10^-5
+a<- sd(x,eps)
+a<- matrix(a,3)
+energy(a)
+# plot the points in 3d space
+scatterplot3d(a)
+#or we can reduce to a 2d space
+a1<- a[1:2,]
+b<- a1[1,]
+c<- a1[2,]
+plot(b,c)
+
+##Part c
+# now we are considering 10 molecules
+x<- runif(30)
+x[c(1:3,5,6,9)]<-0
+a<- sd(x,eps)
+energy(a)
+
+####Prob 3
+mydata <- read.table('E:\\Lorraine\\GUÎÄ¼þ\\Academic\\504\\HW1\\economic_data.txt',header=T)
+x<- mydata$A1
+y <- mydata$A3
+beta<- c(0,0)
+
+# function for residual
+residual=function(beta)
+{
+  error <- (beta[1]*x+beta[2])-y
+  residual <- sum(error^2)
+  return(residual)
+}
+
+# function for gradient of residual
+grad_r =function(beta)
+{ 
+  grad<- c()
+  # partial derivative to beta1
+  grad[1] <- sum(2*x*(beta[1]*x+beta[2]-y))
+  # partial derivative to beta2
+  grad[2] <- sum(2*(beta[1]*x+beta[2]-y))
+  norm <- sqrt(sum(grad^2))
+  normalized <- grad/norm
+  return(list(gradient=grad,norm=norm,normalized=normalized))
+}
+
+# function to find alpha
+# backtracking method
+alpha =function(beta)
+{
+  d<- -grad_r(beta)$normalized
+  temp <- 1
+  i<-0
+  while (residual(beta+temp*d)>=residual(beta))
+  {
+    temp <- temp/2
+    i<- i+1
+    print(i)
+  }
+  return(temp)
+}
+
+# function for steepest descent
+sd = function(beta,eps)
+{
+  i<-0
+  while(grad_r(beta)$norm>eps&i<10000)
+  { beta <- beta-alpha(beta)*grad_r(beta)$normalized
+    i<- i+1
+    print(i)}
+  return(beta)
+}

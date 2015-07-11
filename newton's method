@@ -1,0 +1,255 @@
+
+#3.1  
+f1=function(x){
+  f=20*(x[1]^2)+x[2]^2
+  return(f)
+}
+
+# function for d
+direction=function(x){
+  df<-c()
+  df[1]=40*x[1]
+  df[2]=2*x[2]
+  mo= sqrt(sum(df^2)) 
+  d= -df/mo
+  d=c(d,mo)
+  return(d)
+}
+
+
+
+# function for minimize alpha--bisection method
+# find the root for h(alpha)
+h=function(x,alpha){
+  #g=f(x+a*delta(x)[c(1,2)])
+  df<-c()
+  d <- direction(x)[c(1,2)]
+  df[1]=x[1]+alpha*d[1]
+  df[2]=x[2]+alpha*d[2]
+  diff=sum(df*d)
+  return(diff)
+}
+
+
+
+
+
+alpha=function(x,e1){
+  ar=0
+  al=0
+  while(h(x,ar)<0){
+    ar=ar+0.1
+  }
+  
+  
+  am=(al+ar)/2
+  
+  while(abs(h(x,am))>e1){
+    if(h(x,al)*h(x,am)<0){
+      ar=am
+    }
+    else{
+      al=am
+    }
+    am=(al+ar)/2
+    
+  }
+  root=am
+  return(root)
+}
+
+
+
+
+# steepest descent
+minpoint=function(x,e2){
+  j=1
+  b=x
+  if (direction(x)[3]<e2){
+    return(b)
+  }
+  else {
+    while (direction(x)[3]>=e2){
+      x=x+alpha(x,e1)*(direction(x)[c(1,2)])
+      
+      #if(j%%10==0){
+      #  print(f(x))
+      #  print(x)
+      #}
+      print(x)
+      j=j+1
+      b=matrix(c(b,x),nrow=2)
+    }
+  }
+  return(b)
+}
+
+
+
+
+
+
+#3.2-Newton's Method
+f1=function(x){
+  f=20*(x[1]^2)+x[2]^2
+  return(f)
+}
+
+# function for f1'
+df=function(x){
+  diff<-c()
+  diff[1]=40*x[1]
+  diff[2]=2*x[2]
+  mo= sqrt(sum(diff^2))
+  diff=c(diff,mo)
+  return(diff)
+}
+
+
+
+
+# Hessian matrix for f1
+H=matrix(c(40,0,0,2),2)
+
+
+
+#potimization - Newton's Method
+minpoint2=function(x,e1){
+  
+  while(abs(df(x)[3])>e1){
+   x=x-solve(H)%*%(df(x)[-3])
+   
+    }
+    
+  return(x)
+}
+
+
+
+
+#3.3-1 20*x^2-y^2
+e1=0.01
+e2=0.01
+f2=function(x){
+  f=20*(x[1]^2)-x[2]^2
+  return(f)
+}
+######steepest descent 20x^2-y^2
+# function for d
+direction=function(x){
+  df<-c()
+  df[1]=40*x[1]
+  df[2]=-2*x[2]
+  mo= sqrt(sum(df^2)) 
+  d= -df/mo
+  d=c(d,mo)
+  return(d)
+}
+x<-runif(2)
+minpoint(x,e2)
+
+
+
+
+
+########Newton's Method 20x^2-y^2
+# function for f1'
+df=function(x){
+  diff<-c()
+  diff[1]=40*x[1]
+  diff[2]=-2*x[2]
+  mo= sqrt(sum(diff^2))
+  diff=c(diff,mo)
+  return(diff)
+}
+
+
+
+
+# Hessian matrix for f1
+H=matrix(c(40,0,0,-2),2)
+
+minpoint2(x,e1)
+
+
+
+#3.3-2 -20*x^2-y^2
+e1=0.01
+e2=0.01
+f2=function(x){
+  f=20*(x[1]^2)-x[2]^2
+  return(f)
+}
+######steepest descent 20x^2-y^2
+# function for d
+direction=function(x){
+  df<-c()
+  df[1]=-40*x[1]
+  df[2]=-2*x[2]
+  mo= sqrt(sum(df^2)) 
+  d= -df/mo
+  d=c(d,mo)
+  return(d)
+}
+x<-runif(2)
+minpoint(x,e2)
+
+
+
+
+
+########Newton's Method 20x^2-y^2
+# function for f1'
+df=function(x){
+  diff<-c()
+  diff[1]=-40*x[1]
+  diff[2]=-2*x[2]
+  mo= sqrt(sum(diff^2))
+  diff=c(diff,mo)
+  return(diff)
+}
+
+
+
+
+# Hessian matrix for f1
+H=matrix(c(-40,0,0,-2),2)
+
+minpoint2(x,e1)
+
+
+
+#4
+
+MySqrt=function(a){
+  j=0
+  y=c()
+  x<-runif(1)
+  
+  while(abs((x^2-a))>0.01){
+    j=j+1
+    f=x^2-a
+    x=x-f/2
+    print(x)
+    y[j]=x  
+  }
+      
+  answer=list(root=x, iteration=j, vector=y)
+  return(answer)
+}
+
+list<-MySqrt(4)
+list$root
+> list$root
+[1] 2.002498
+list$iteration
+> list$iteration
+[1] 319965
+
+
+
+
+
+
+
+
